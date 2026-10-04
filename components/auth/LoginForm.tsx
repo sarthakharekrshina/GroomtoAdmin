@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { sendOtp, verifyOtpAndSignIn } from "@/app/actions/auth";
+import { sendOtp, signInWithEmail, verifyOtpAndSignIn } from "@/app/actions/auth";
 
 function toE164(input: string): string {
   const digits = input.replace(/\D/g, "");
@@ -19,6 +19,23 @@ export function LoginForm({ initialError }: { initialError?: string }) {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [isPending, startTransition] = useTransition();
+  const [method, setMethod] = useState<"otp" | "password">("otp");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  function handleEmailSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    startTransition(async () => {
+      const result = await signInWithEmail(email, password);
+      if (!result.ok) {
+        setError(result.error ?? "Sign-in failed.");
+        return;
+      }
+      router.push("/");
+      router.refresh();
+    });
+  }
 
   function handleSendOtp() {
     setError(null);
@@ -57,11 +74,74 @@ export function LoginForm({ initialError }: { initialError?: string }) {
           AdminPartner
         </h1>
         <p className="mt-1 text-sm text-muted">
-          Sign in with an admin phone number
+          {method === "otp"
+            ? "Sign in with an admin phone number"
+            : "Sign in with your admin email"}
         </p>
       </div>
 
-      {step === "phone" ? (
+      <div className="mb-5 grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1">
+        {(
+          [
+            ["otp", "Phone code"],
+            ["password", "Email & password"],
+          ] as const
+        ).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => {
+              setMethod(key);
+              setError(null);
+            }}
+            className={`rounded-md px-2 py-1.5 text-xs font-semibold transition-colors ${
+              method === key
+                ? "bg-surface text-brand shadow-sm"
+                : "text-muted hover:text-foreground"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {method === "password" ? (
+        <form onSubmit={handleEmailSignIn} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">
+              Email
+            </label>
+            <input
+              type="email"
+              autoComplete="username"
+              placeholder="admin@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-muted">
+              Password
+            </label>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full rounded-lg border border-border px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+          </div>
+          {error && <p className="text-sm text-danger">{error}</p>}
+          <button
+            type="submit"
+            disabled={isPending || !email.trim() || !password}
+            className="w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-60"
+          >
+            {isPending ? "Signing in…" : "Sign in"}
+          </button>
+        </form>
+      ) : step === "phone" ? (
         <div className="space-y-4">
           <div>
             <label className="mb-1 block text-xs font-medium text-muted">

@@ -20,6 +20,11 @@ exact list of what's real today vs. proposed.
 
 - Sign-in is phone + OTP via the same Supabase Edge Functions the Partner app uses
   (`send-otp` / `verify-otp`), landing on a real Supabase JWT session.
+- Admins can also sign in with **email + password** (`signInWithEmail`), meant for a dedicated
+  email-only Supabase user created in the dashboard. **Never give a phone-number account a
+  password**: phone logins are shared by the Customer/Partner apps and `verify-otp` manages their
+  password — setting one signs that number out of both apps and is overwritten at its next OTP
+  sign-in. Both paths end at the same `is_platform_admin()` gate.
 - Admin-ness is **never** a frontend flag. Every gated page/action calls the
   `is_platform_admin()` Postgres RPC (or an RPC that internally checks it). The gate lives in
   `app/(app)/layout.tsx`.
